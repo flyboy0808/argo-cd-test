@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: test-graph-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: fast
+  hostPath:
+    path: /data
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-graph-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Mi
+  storageClassName: fast
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graph-app-deployment
+  labels:
+    app: graph-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: graph-app
+  template:
+    metadata:
+      labels:
+        app: graph-app
+    spec:
+      containers:
+      - name: graph-app
+        image: flyboy0808/shree-project:1.2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: test-graph-pv-data
+          mountPath: /var/app/output
+      volumes:
+      - name: test-graph-pv-data
+        persistentVolumeClaim:
+          claimName: test-graph-pvc
+      imagePullSecrets:
+      - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graph-app-service
+spec:
+  selector:
+    app: graph-app
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30000
